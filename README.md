@@ -39,3 +39,4 @@ Then for each image of symbol-text you want to translate:
 * <http://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_template_matching/py_template_matching.html>
 * <http://machinelearningmastery.com/using-opencv-python-and-template-matching-to-play-wheres-waldo/>
 * <http://www.pyimagesearch.com/2015/01/26/multi-scale-template-matching-using-python-opencv/>
+* <http://practicalcryptography.com/cryptanalysis/text-characterisation/quadgrams/>
