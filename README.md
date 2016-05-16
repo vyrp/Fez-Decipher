@@ -27,6 +27,11 @@ Now, the useful part. Given a picture of a symbol-text, the script produces an i
 
 ## Usage
 
+Setting up:
+
+```$ python setup.py```
+
+
 To generate the mapping:
 
 ```$ decipher-symbols.py```
