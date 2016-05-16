@@ -3,6 +3,7 @@ import os
 import shutil
 import sys
 
+
 def main(foldername):
     newfolder = foldername + "_bw"
     if os.path.isdir(newfolder):

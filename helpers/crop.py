@@ -1,5 +1,6 @@
 import cv2
 
+
 def main(filenames, x, w, y, h):
     print "Starting"
     for filename in filenames:

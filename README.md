@@ -40,6 +40,16 @@ Then for each image of symbol-text you want to translate:
 
 ```$ translate [-t|-i] <image>```
 
+## Contributing
+
+If you'd like to contribute, please use [Flake8](http://flake8.pycqa.org/en/latest/index.html) and its pre-commit hook:
+
+```
+$ pip install pep8-naming flake8
+$ flake8 --install-hook
+$ git config flake8.strict true
+```
+
 ## References
 * <http://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_template_matching/py_template_matching.html>
 * <http://machinelearningmastery.com/using-opencv-python-and-template-matching-to-play-wheres-waldo/>
