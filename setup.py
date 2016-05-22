@@ -1,4 +1,5 @@
-from helpers import bw
+from operations import bw
+from operations.helpers import run
 
 print "== Turning into black and white =="
-bw.main("pictures")
+run(bw.bw, [None, "pictures"])
