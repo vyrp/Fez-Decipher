@@ -44,3 +44,19 @@ def run(fn, argv):
         exit(1)
 
     foreach_file_in_folder(argv[1], fn_name, fn(*[T(v) for T, v in zip(types, argv[2:])]))
+
+
+def run_once(fn, argv):
+    """
+    Runs function `fn` with arguments `argv`.
+    """
+    fn_name = fn.func_name
+    args = inspect.getargspec(fn).args
+    types = fn.types
+    if len(argv) - 1 != len(args):
+        str_args = ["<%s:%s>"
+                    % (arg, _type_name.match(str(t)).group(1)) for arg, t in zip(args, types)]
+        print "\nUsage:\n    %s.py %s" % (fn_name, " ".join(str_args))
+        exit(1)
+
+    fn(*[T(v) for T, v in zip(types, argv[1:])])
