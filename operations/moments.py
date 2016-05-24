@@ -1,11 +1,20 @@
 import cv2
+import numpy as np
 import os
 import re
 import sys
 
 from helpers import run_once
+from matplotlib import pyplot as plt
 
 _separator = re.compile(r"/|\\")
+
+
+class Image():
+    def __init__(self, filename, img, moment):
+        self.filename = filename
+        self.img = img
+        self.moment = moment
 
 
 def moments(foldername, opname, is_bw):
@@ -13,24 +22,29 @@ def moments(foldername, opname, is_bw):
 
     print "Starting [%s]" % opname
 
-    with open(foldername + "_" + opname + ".txt", "w") as out_file:
-        for filename in os.listdir(foldername):
-            img = cv2.imread(os.path.join(foldername, filename), 0)
-            moment = cv2.moments(img, is_bw)
+    # Calculating moments
+    names = ["nu20", "nu11", "nu02", "nu30", "nu21", "nu12", "nu03"]
+    images = []
+    for filename in os.listdir(foldername):
+        img = cv2.imread(os.path.join(foldername, filename), 0)
+        moment = cv2.moments(img, is_bw)
+        images.append(Image(filename, img, np.array([moment[name] for name in names])))
 
-            out_file.write("=== " + filename + " ===\n\n")
+    L = min(7, len(images))  # noqa: constant
+    for img1 in images:
+        similars = sorted([((np.true_divide(img1.moment - img2.moment, img1.moment)**2).sum(), img2)
+                           for img2 in images])
 
-            for item in ["m00", "m10", "m01", "m20", "m11", "m02", "m30", "m21", "m12", "m03"]:
-                out_file.write("%s: %012.1f\n" % (item, moment[item]))
-            out_file.write("\n")
+        plt.subplot(2, L, 1), plt.imshow(img1.img, cmap="gray")
+        plt.title("Target: " + img1.filename), plt.xticks([]), plt.yticks([])
 
-            for item in ["mu20", "mu11", "mu02", "mu30", "mu21", "mu12", "mu03"]:
-                out_file.write("%s: %012.1f\n" % (item, moment[item]))
-            out_file.write("\n")
+        for idx, elem in enumerate(similars[1:L+1]):
+            plt.subplot(2, L, L + idx + 1), plt.imshow(elem[1].img, cmap="gray")
+            plt.title("%s (%.2f)" % (elem[1].filename, elem[0])), plt.xticks([]), plt.yticks([])
 
-            for item in ["nu20", "nu11", "nu02", "nu30", "nu21", "nu12", "nu03"]:
-                out_file.write("%s: %012.8f\n" % (item, moment[item]))
-            out_file.write("\n")
+        mng = plt.get_current_fig_manager()
+        mng.window.state('zoomed')
+        plt.show()
 
     print "Done"
 
