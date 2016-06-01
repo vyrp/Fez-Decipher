@@ -1,7 +1,10 @@
 import cv2
+import matplotlib.pyplot as plt
 import os
-import shutil
+# import shutil
 import sys
+
+from collections import defaultdict
 
 
 def get_symbol_positions(img):
@@ -19,34 +22,18 @@ def get_symbol_positions(img):
     return symbols
 
 
-def print_image_with_symbols_border(img_color_resized, symbols, filename):
-    for row in symbols:
-        for rectangle in row:
-            cv2.rectangle(img_color_resized, rectangle[0], rectangle[1], (0, 0, 255), 1)
-
-    cv2.imwrite(os.path.join("out", filename), img_color_resized)
-    print os.path.join("out", filename)
-
-
-def to_bits(symbol, img):
+def to_bits(img):
     """
-    Gets the bitwise decimal representation of <symbol>,
-    passed as a rectangle in ((xstart, ystart), (xend, yend)) form.
+    Gets the bitwise decimal representation of the symbol in <img>.
+    <img> can have any size, but is interpreted as a matrix of 5x5 cells,
+    where each cell is either black or white.
+    In the binary representation, white cells are 1, and black are 0.
 
     Returns an integer.
     """
 
-    # Find first and last lines of the symbol
-    first_row = symbol[0][1]
-    last_row = symbol[1][1]
-    h = last_row - first_row
-
-    # Find first and last columns of the symbol
-    first_col = symbol[0][0]
-    last_col = symbol[1][0]
-    w = last_col - first_col
-
     # Cell sizes
+    h, w = img.shape
     assert w % 5 == 0 and h % 5 == 0, "Error! Image sizes not divisible by 5."
 
     cell_w = w / 5
@@ -56,10 +43,47 @@ def to_bits(symbol, img):
     bits = 0
     for row in range(cell_h / 2, h, cell_h):
         for col in range(cell_w / 2, w, cell_w):
-            bit = img[first_row + row, first_col + col] > 0
-            bits = (bits << 1) | int(bit)
+            bits = (bits << 1) | int(img[row, col] > 0)
 
     return bits
+
+
+def print_image_with_symbols_border(img_color_resized, symbols, filename):
+    for row in symbols:
+        for rectangle in row:
+            cv2.rectangle(img_color_resized, rectangle[0], rectangle[1], (0, 0, 255), 2)
+
+    cv2.imwrite(os.path.join("out", filename), img_color_resized)
+    print os.path.join("out", filename)
+
+
+def to_matrix(fullpath):
+    img_gray = cv2.imread(fullpath, 0)
+    img_bw = cv2.threshold(img_gray, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    img_bw_resized = cv2.resize(img_bw, (0, 0), fx=10, fy=10, interpolation=cv2.INTER_NEAREST)
+
+    # Making background black
+    if img_bw_resized[0, 0]:
+        img_bw_resized = ~img_bw_resized
+
+    # Find symbols positions
+    symbols_y = get_symbol_positions(img_bw_resized)
+    symbols_x = get_symbol_positions(img_bw_resized.T)
+
+    # Translate each symbol to its bitwise decimal representation
+    symbols = [[to_bits(img_bw_resized[value_y[0]: value_y[1], value_x[0]: value_x[1]])
+                for value_x in symbols_x]
+               for value_y in symbols_y]
+
+    # img_color = cv2.imread(fullpath)
+    # img_color_resized = cv2.resize(img_color,(0, 0),fx=10,fy=10,interpolation=cv2.INTER_NEAREST)
+    # print_image_with_symbols_border(
+    #     img_color_resized,
+    #     [[tuple(zip(value_x, value_y)) for value_x in symbols_x] for value_y in symbols_y],
+    #     os.path.basename(fullpath)
+    # )
+
+    return symbols
 
 
 def write_symbol_bits_to_file(symbols, filename):
@@ -85,46 +109,41 @@ def decipher_symbols(foldername):
     and writes the solution in folder "symbols".
     """
 
-    if not os.path.isdir(foldername):
-        print foldername + " doesn't exist."
-        exit(1)
+    assert os.path.isdir(foldername), foldername + " doesn't exist."
 
-    if os.path.isdir("out"):
-        shutil.rmtree("out")
-    os.mkdir("out")
+    print "== Starting =="
 
-    print "== Starting ==", os.getcwd()
+    counts = defaultdict(int)
     for filename in os.listdir(foldername):
-        img_color = cv2.imread(os.path.join(foldername, filename))
-        img_gray = cv2.cvtColor(img_color, cv2.COLOR_BGR2GRAY)
-        img_bw = cv2.threshold(img_gray, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-        img_bw_resized = cv2.resize(img_bw, (0, 0), fx=10, fy=10, interpolation=cv2.INTER_NEAREST)
-        # img_color_resized=cv2.resize(img_color,(0,0),fx=10,fy=10,interpolation=cv2.INTER_NEAREST)
+        print filename
+        symbols = to_matrix(os.path.join(foldername, filename))
+        # write_symbol_bits_to_file(symbols, filename)
+        for line in symbols:
+            for symbol in line:
+                counts[symbol] += 1
 
-        # Making background black
-        if img_bw_resized[0, 0]:
-            img_bw_resized = ~img_bw_resized
+    symbols = counts.keys()
+    symbols.remove(0)
+    symbols.sort(key=lambda s: counts[s], reverse=True)
+    ordered_counts = [counts[s] for s in symbols]
+    total = float(sum(ordered_counts))
+    frequencies = [c / total for c in ordered_counts]
+    xs = range(1, len(symbols) + 1)
 
-        # Find symbols positions
-        symbols_y = get_symbol_positions(img_bw_resized)
-        symbols_x = get_symbol_positions(img_bw_resized.T)
+    print "Stats:"
+    print "    max: %d" % counts[symbols[0]]
+    print "    min: %d" % counts[symbols[-1]]
+    print "    # letters: %d" % len(symbols)
+    print "    # symbols: %.0f" % total
 
-        symbol_positions = [None] * len(symbols_y)
-        for idx_y, value_y in enumerate(symbols_y):
-            symbol_positions[idx_y] = [None] * len(symbols_x)
-            for idx_x, value_x in enumerate(symbols_x):
-                # ((xstart, ystart), (xend, yend))
-                symbol_positions[idx_y][idx_x] = tuple(zip(value_x, value_y))
+    plt.bar(xs, frequencies, 0.5)
+    plt.xlabel("Symbol decimal")
+    plt.xticks(xs, [str(s) for s in symbols], rotation=70)
+    plt.ylabel("Frequencies")
+    plt.grid(True)
+    plt.show()
 
-        # Translate each symbol to its bitwise decimal representation
-        symbols = [[to_bits(symbol, img_bw_resized) for symbol in line]
-                   for line in symbol_positions]
-
-        write_symbol_bits_to_file(symbols, filename)
-
-        # Write a txt
-
-    print "== Ended ==\n"
+    print "== Ended =="
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
